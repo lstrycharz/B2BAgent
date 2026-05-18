@@ -113,6 +113,9 @@ def extract_signals(
     response = client.messages.create(
         model=model_id,
         max_tokens=4096,
+        # temperature=0 makes signal phrasing stable across runs so the dedup
+        # hash on headline/verbatim_quote actually catches repeats.
+        temperature=0,
         system=SYSTEM_PROMPT,
         tools=[_EXTRACT_TOOL],
         tool_choice={"type": "tool", "name": "submit_intelligence_report"},

@@ -165,6 +165,8 @@ These are changes that **must** make it into Stage 3 even before running the pro
 
 8. **Source URL normalization.** If `linear.app/pricing` redirects to `linear.app/pricing/` after a site update, naive deduplication will treat them as different. Normalize URLs (lowercase, strip trailing slash, strip query params except known-meaningful ones) before storing.
 
+9. **(Discovered in Stage 3 chunk 2, backfilled here)** **Hash-based dedup misses paraphrased signals even at `temperature=0`.** Originally we planned to include `verbatim_quote[:200]` in the dedup hash. Live testing showed Claude picks slightly different quote spans across runs, defeating the hash. Even after switching to headline-only hashing, Claude rephrases the *headline itself* across runs for the same underlying intel. The fix (semantic similarity dedup) is not free, and we can't measure whether it's needed until we have production data. Logged as `L-1` in [KNOWN_LIMITATIONS.md](../KNOWN_LIMITATIONS.md) and queued as Stage 6 Iteration #1.
+
 ---
 
 ## Section D — Definition of Done — Stage 2

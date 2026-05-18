@@ -103,6 +103,22 @@ def test_extract_signals_returns_parsed_report_and_usage():
     assert usage == {"input_tokens": 8000, "output_tokens": 400}
 
 
+def test_extract_signals_uses_temperature_zero_for_determinism():
+    """Without this, the same competitor data produces differently-phrased
+    signals on each run, defeating the dedup hash."""
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _fake_anthropic_response(
+        {"competitor": "Linear", "signals": [], "null_finding": "Quiet."}
+    )
+    extract_signals(
+        client=fake_client,
+        competitor_name="Linear",
+        sources=[{"kind": "pricing", "url": "x", "text": "y"}],
+        model_id="claude-sonnet-4-6",
+    )
+    assert fake_client.messages.create.call_args.kwargs["temperature"] == 0
+
+
 def test_extract_signals_sends_competitor_and_sources_in_user_message():
     fake_client = MagicMock()
     fake_client.messages.create.return_value = _fake_anthropic_response(

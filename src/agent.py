@@ -1,7 +1,12 @@
-"""Agent orchestrator: runs the full pipeline across all configured competitors."""
+"""Agent orchestrator: runs the full pipeline across all configured competitors.
+
+Pipeline: fetch → extract → dedup (via SignalStore) → render.
+"""
 
 from dataclasses import dataclass
 from typing import Any
+
+import httpx
 
 from src.config import Competitor
 from src.stages import (
@@ -10,6 +15,7 @@ from src.stages import (
     fetch_competitor,
     render_digest,
 )
+from src.state import SignalStore
 
 
 @dataclass
@@ -26,10 +32,11 @@ def run_once(
     client: Any,
     competitors: list[Competitor],
     model_id: str,
+    store: SignalStore,
 ) -> RunResult:
-    """Run the pipeline once across all competitors. Returns a RunResult with
-    the rendered digest and token accounting. No deduplication yet (chunk 2)."""
-    allowed_hosts = frozenset(_host_of(source.url) for c in competitors for source in c.sources)
+    """Run the pipeline once across all competitors. Filters out signals
+    already in `store`, marks new signals as seen, and returns the digest."""
+    allowed_hosts = frozenset(httpx.URL(s.url).host for c in competitors for s in c.sources)
 
     reports: dict[str, IntelligenceReport] = {}
     total_in = 0
@@ -43,9 +50,9 @@ def run_once(
             sources=sources,
             model_id=model_id,
         )
-        reports[competitor.name] = report
         total_in += usage["input_tokens"]
         total_out += usage["output_tokens"]
+        reports[competitor.name] = _dedup_report(report, competitor.name, store)
 
     return RunResult(
         digest=render_digest(reports),
@@ -55,7 +62,33 @@ def run_once(
     )
 
 
-def _host_of(url: str) -> str:
-    import httpx
+def _dedup_report(
+    report: IntelligenceReport,
+    competitor_name: str,
+    store: SignalStore,
+) -> IntelligenceReport:
+    """Filter signals to only those unseen, mark survivors as seen.
 
-    return httpx.URL(url).host
+    If the model already returned zero signals (genuine quiet week), preserve
+    its null_finding. If dedup itself emptied the list, explain that distinctly
+    so the marketer doesn't think the competitor was quiet when really we just
+    saw repeats.
+    """
+    if not report.signals:
+        return report  # nothing to filter; preserve model's null_finding
+
+    new_signals = [s for s in report.signals if store.is_new(s, competitor_name)]
+    for s in new_signals:
+        store.mark_seen(s, competitor_name)
+
+    if not new_signals:
+        return report.model_copy(
+            update={
+                "signals": [],
+                "null_finding": (
+                    f"All {len(report.signals)} signal(s) this run were already "
+                    "surfaced previously."
+                ),
+            }
+        )
+    return report.model_copy(update={"signals": new_signals})
