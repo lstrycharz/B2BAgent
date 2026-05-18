@@ -77,7 +77,9 @@ def _maybe_send_digest(digest: str, total_new_signals: int) -> None:
         print("(email skipped: RESEND_API_KEY or DIGEST_RECIPIENT_EMAIL not set)")
         return
 
-    from_address = os.environ.get("DIGEST_FROM_EMAIL", DEFAULT_FROM_EMAIL)
+    # `or` covers both unset *and* set-to-empty-string (which is what GitHub
+    # Actions injects when the secret isn't configured — bug found 2026-05-18).
+    from_address = os.environ.get("DIGEST_FROM_EMAIL") or DEFAULT_FROM_EMAIL
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     subject = f"[Competitive Intel] {today} — {total_new_signals} new signal(s)"
 
