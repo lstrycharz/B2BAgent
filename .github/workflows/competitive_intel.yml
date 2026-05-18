@@ -1,0 +1,61 @@
+name: Daily Competitive Intel
+
+on:
+  schedule:
+    # 09:00 UTC daily. Picked so the digest lands before a US-East workday.
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}  # allow manual triggering from the Actions tab
+
+permissions:
+  # contents:write is required to commit data/state.db back so dedup persists
+  # across runs. The push uses [skip ci] in the message to avoid recursive runs.
+  contents: write
+
+concurrency:
+  # Never run two cron jobs in parallel — they'd race on the SQLite file.
+  group: competitive-intel
+  cancel-in-progress: false
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run competitive intelligence agent
+        env:
+          # Required
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional — if either is unset, email is skipped (the run still
+          # produces a digest visible in the workflow logs).
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DIGEST_RECIPIENT_EMAIL: ${{ secrets.DIGEST_RECIPIENT_EMAIL }}
+          DIGEST_FROM_EMAIL: ${{ secrets.DIGEST_FROM_EMAIL }}
+        run: python -m src.main
+
+      - name: Persist signal-dedup state
+        # data/state.db is .gitignore'd by default; force-add it so the cron
+        # can commit it back as a dedup checkpoint. The file remains tracked
+        # for subsequent runs (gitignore doesn't apply to tracked files).
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f data/state.db
+          if git diff --cached --quiet; then
+            echo "No state changes to commit"
+          else
+            git commit -m "chore(cron): update signal-dedup state [skip ci]"
+            git push
+          fi

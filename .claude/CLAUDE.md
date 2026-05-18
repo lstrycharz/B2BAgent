@@ -50,7 +50,7 @@ Plan file: `/Users/lukaszstrycharz/.claude/plans/i-want-to-work-unified-lecun.md
 
 ```bash
 # Setup
-python -m venv .venv && source .venv/bin/activate
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # Tests
@@ -67,6 +67,19 @@ python -m src.main
 # Run dashboard
 streamlit run monitoring/dashboard.py
 ```
+
+## GitHub Actions secrets (for daily cron)
+
+Configure in **Settings → Secrets and variables → Actions**:
+
+| Secret | Required? | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | yes | The LLM provider |
+| `RESEND_API_KEY` | no | If unset, email is skipped (digest still appears in workflow logs) |
+| `DIGEST_RECIPIENT_EMAIL` | no | Where the digest is delivered |
+| `DIGEST_FROM_EMAIL` | no | Defaults to `onboarding@resend.dev` |
+
+The workflow needs `contents: write` permission to commit `data/state.db` back to the repo for dedup persistence. Already configured in `.github/workflows/competitive_intel.yml`.
 
 ## Project Structure
 
