@@ -34,6 +34,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Diagnose Resend (temporary — remove once email works)
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DIGEST_RECIPIENT_EMAIL: ${{ secrets.DIGEST_RECIPIENT_EMAIL }}
+        run: python scripts/debug_email.py
+        continue-on-error: true
+
       - name: Run competitive intelligence agent
         env:
           # Required

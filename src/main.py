@@ -88,7 +88,23 @@ def _maybe_send_digest(digest: str, total_new_signals: int) -> None:
     except Exception as e:
         # Don't fail the run because email failed — the digest is already printed
         # and signals are already in the SQLite store.
-        print(f"⚠️  Email send failed: {e}", file=sys.stderr)
+        # Log enough context to diagnose without exposing the API key.
+        recipient_user, _, recipient_domain = recipient.partition("@")
+        print(
+            f"⚠️  Email send failed: type={type(e).__name__} msg={e!r}",
+            file=sys.stderr,
+        )
+        print(
+            f"   diagnostic: from={from_address!r}  recipient_user_len={len(recipient_user)}  "
+            f"recipient_domain={recipient_domain!r}  key_len={len(resend_key)}",
+            file=sys.stderr,
+        )
+        # Try to pull additional fields off the exception (some SDKs attach
+        # .message, .code, .status_code, .body)
+        for attr in ("message", "code", "status_code", "body", "errors"):
+            value = getattr(e, attr, None)
+            if value is not None:
+                print(f"   exception.{attr} = {value!r}", file=sys.stderr)
 
 
 if __name__ == "__main__":
