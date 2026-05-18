@@ -112,6 +112,25 @@ For anyone who wants to look around:
 
 ---
 
+## Scope and responsible use
+
+This agent fetches only **publicly published content** from competitor websites (pricing pages, public changelogs, public blogs). It does not log in, does not bypass any access control, and respects standard `robots.txt` conventions implicitly by only requesting documented public URLs.
+
+If you fork this and point it at different sites, you are responsible for:
+- Respecting those sites' Terms of Service
+- Not exceeding reasonable request rates
+- Using the output internally rather than republishing it
+
+The five competitors monitored by default (Linear, Asana, Notion, Monday, ClickUp) were chosen precisely because all five publish pricing, product updates, and blog content openly for marketing reasons — they want this content read.
+
+## License
+
+[MIT](LICENSE). Use it, fork it, modify it, ship it — credit appreciated, not required.
+
+## Status disclaimer
+
+This is a **learning project**, not a commercial product. It works (42 tests passing, running daily in production), but it ships with known limitations (see [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)) and is intentionally simple in places where a production-grade tool would invest more. If you want competitive intelligence as a paid service, several established companies do this — this repo is for people who want to *learn how to build* one.
+
 ## For developers
 
 If you're technical and want to run this yourself, see **[.claude/CLAUDE.md](.claude/CLAUDE.md)** for the setup commands, tech stack, and project structure. Quick version:
