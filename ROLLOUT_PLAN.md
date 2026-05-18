@@ -10,27 +10,30 @@ This is the lifecycle muscle most engineers skip. The whole point of building th
 
 ---
 
-## Phase 1 — Shadow
+## Phase 1 — Shadow (lean, solo-project version)
 
-**Duration:** 3–4 days minimum (target start: 2026-05-18 → graduate no earlier than 2026-05-21).
+**Duration:** 3 days (target start: 2026-05-18 → graduate no earlier than 2026-05-21).
 
-**Behavior:** Agent runs daily as scheduled. The email digest is delivered to `DIGEST_RECIPIENT_EMAIL` (you) only. **You do not forward it to anyone else.** You read every digest and annotate each signal as `✓` (would-forward), `✗` (noise), or `?` (needs more context).
+**Why "lean":** The original Phase 1 protocol (per-signal grading × 21 signals × 3 days) was scaled for a team where shipping a bad digest embarrasses you in front of a stakeholder. For a solo learning project where you're the only recipient, that risk doesn't exist yet. Right-sizing the discipline to the actual blast radius is itself the PM lesson — see [ITERATIONS.md](ITERATIONS.md) Iteration #1 for the explicit decision.
 
-**Why this phase exists:** to catch hallucinations, broken fetches, and noise-heavy output *before* anyone outside you sees the digest. Worst-case failure here is your 10 minutes of reading time.
+**Behavior:** Agent runs daily as scheduled. You read the digest casually (workflow log or email if working). No per-signal grading. **You do not forward the digest to anyone.**
 
-**Daily ritual (≤ 10 min):**
-1. Open the digest email.
-2. For each signal, decide ✓ / ✗ / ?. Note the reason if not obvious.
-3. Verify the verbatim quote exists in the source URL (spot-check 1 per digest — Cmd-F the quote in the source page).
-4. Append the day's annotations to a new file under [`rollout/phase1_shadow/`](rollout/phase1_shadow/) using the [template](rollout/phase1_shadow/_template.md).
+**Daily ritual (≤ 2 min):** open the digest. Skim. Notice anything obviously wrong. Move on.
 
-**Go / no-go criteria** (all must hold over the last 3 days before graduating):
-- [ ] **Relevance ≥ 80%:** at minimum 4 of every 5 signals marked ✓ across the rolling 3-day window.
-- [ ] **Real catch:** the agent surfaced at least 1 competitive move you could independently verify (cross-reference against TechCrunch, the competitor's Twitter, or a news search).
-- [ ] **Zero hallucinations:** all spot-checked verbatim quotes are present in the source URLs verbatim. If any quote turns out to be paraphrased or fabricated → **stop. Tighten the prompt. Re-shadow.**
-- [ ] **Run reliability:** 3 consecutive successful workflow runs, no fetch errors that lost an entire competitor, no cost-cap aborts.
+**End-of-day-3 consolidated review (≤ 10 min, one pass over all 3 digests together):**
 
-**No-go action:** stay in Shadow. Identify the highest-impact failure (noise rate, prompt phrasing, fetch reliability) and address it before extending the phase.
+Fill in [`rollout/phase1_shadow/_review.md`](rollout/phase1_shadow/_review.md) — three questions:
+
+1. **Relevance gut-check:** of all the signals across 3 digests, roughly what fraction felt useful? ("most", "about half", "less than half")
+2. **Hallucination check:** pick **one** signal from any of the 3 digests. Open its source URL. Search for the verbatim quote. Was it actually there?
+3. **Systematic patterns:** anything that systematically annoyed you (repeated near-duplicates, off-target rankings, missing intel about a known competitor move)? These become Stage 6 iteration candidates.
+
+**Go / no-go criteria:**
+- [ ] **Relevance feels ≥ 70%** ("most" of the signals were useful).
+- [ ] **Hallucination check passes** — the spot-checked quote is verbatim in the source.
+- [ ] **Run reliability** — 3 consecutive successful workflow runs (check via `gh run list --limit 5`).
+
+**No-go action:** if relevance is low or you found a hallucination, log the specific failure mode in [ITERATIONS.md](ITERATIONS.md) as a real iteration item, address it (tighten the prompt, fix the failing source, etc.), then re-shadow for 2 more days.
 
 ---
 
