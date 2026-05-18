@@ -14,14 +14,10 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 from src.agent import run_once
-from src.config import DEFAULT_COMPETITORS
+from src.config import DEFAULT_COMPETITORS, usage_to_cost_usd
 from src.state import SignalStore
 
 DEFAULT_MODEL_ID = "claude-sonnet-4-6"
-
-# Sonnet 4.6 pricing (verify against current Anthropic pricing): $3 / MTok in, $15 / MTok out
-INPUT_PRICE_PER_MTOK_USD = 3.0
-OUTPUT_PRICE_PER_MTOK_USD = 15.0
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = REPO_ROOT / "data" / "state.db"
@@ -53,14 +49,16 @@ def main() -> int:
     print(result.digest)
     print()
     print("---")
-    cost = (
-        result.total_input_tokens / 1_000_000 * INPUT_PRICE_PER_MTOK_USD
-        + result.total_output_tokens / 1_000_000 * OUTPUT_PRICE_PER_MTOK_USD
-    )
+    cost = usage_to_cost_usd(result.total_input_tokens, result.total_output_tokens)
     print(
         f"Tokens: {result.total_input_tokens} in / {result.total_output_tokens} out  "
         f"≈ ${cost:.4f} USD  |  state: {DEFAULT_DB_PATH}"
     )
+    if result.aborted_competitors:
+        print(
+            f"⚠️  Cost cap reached; aborted: {', '.join(result.aborted_competitors)}",
+            file=sys.stderr,
+        )
     return 0
 
 

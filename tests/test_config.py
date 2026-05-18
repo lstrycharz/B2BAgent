@@ -20,25 +20,21 @@ def test_competitor_holds_name_and_sources():
 
 
 def test_default_competitors_includes_all_five_project_management_tools():
-    """Chunk 3 scope: 5 competitors in the project-management category, each
-    with one pricing-page source. Additional sources per competitor are added
-    in chunk 4. The 5 picks match the Stage 1 selection: Linear, Asana,
-    Notion, Monday, ClickUp."""
+    """Chunk 3 scope: 5 competitors in the project-management category. The
+    5 picks match the Stage 1 selection: Linear, Asana, Notion, Monday, ClickUp."""
     names = [c.name for c in DEFAULT_COMPETITORS]
     assert names == ["Linear", "Asana", "Notion", "Monday", "ClickUp"]
 
-    for competitor in DEFAULT_COMPETITORS:
-        assert len(competitor.sources) == 1, f"{competitor.name} should have 1 source in chunk 3"
-        assert competitor.sources[0].kind == "pricing"
-        assert competitor.sources[0].url.startswith("https://")
+
+def test_every_competitor_has_a_pricing_source():
+    for c in DEFAULT_COMPETITORS:
+        kinds = [s.kind for s in c.sources]
+        assert "pricing" in kinds, f"{c.name} must include a pricing source"
 
 
-def test_default_competitor_urls_are_the_expected_pricing_pages():
-    urls = {c.name: c.sources[0].url for c in DEFAULT_COMPETITORS}
-    assert urls == {
-        "Linear": "https://linear.app/pricing",
-        "Asana": "https://asana.com/pricing",
-        "Notion": "https://www.notion.com/pricing",
-        "Monday": "https://monday.com/pricing",
-        "ClickUp": "https://clickup.com/pricing",
-    }
+def test_chunk4_every_competitor_has_at_least_two_sources():
+    """Chunk 4 scope: each competitor gets a pricing source plus one
+    second source (changelog/blog/releases — whichever surfaces the most
+    product-launch signal)."""
+    for c in DEFAULT_COMPETITORS:
+        assert len(c.sources) >= 2, f"{c.name} should have >= 2 sources in chunk 4"

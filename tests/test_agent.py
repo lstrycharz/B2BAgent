@@ -99,6 +99,55 @@ def test_run_once_filters_out_signals_already_in_store(mock_fetch, mock_extract,
 
 @patch("src.agent.extract_signals")
 @patch("src.agent.fetch_competitor")
+def test_run_once_aborts_remaining_competitors_when_cost_cap_exceeded(
+    mock_fetch, mock_extract, store
+):
+    """Safety net: a misconfig or runaway model output must not blow the budget."""
+    mock_fetch.return_value = [{"kind": "pricing", "url": "x", "text": "y"}]
+    # Each call: 1M input + 1M output = $3 + $15 = $18 — way over the $5 cap
+    mock_extract.return_value = (
+        _stub_report("X"),
+        {"input_tokens": 1_000_000, "output_tokens": 1_000_000},
+    )
+
+    competitors = [
+        Competitor(name=n, sources=[Source(kind="pricing", url=f"https://{n.lower()}.app/p")])
+        for n in ["A", "B", "C"]
+    ]
+    result = run_once(
+        client=MagicMock(),
+        competitors=competitors,
+        model_id="claude-sonnet-4-6",
+        store=store,
+        cost_cap_usd=5.0,
+    )
+    # First competitor runs and blows the cap; the other two are aborted before LLM call
+    assert mock_extract.call_count == 1
+    assert result.aborted_competitors == ["B", "C"]
+
+
+@patch("src.agent.extract_signals")
+@patch("src.agent.fetch_competitor")
+def test_run_once_under_cap_processes_all_competitors(mock_fetch, mock_extract, store):
+    mock_fetch.return_value = [{"kind": "pricing", "url": "x", "text": "y"}]
+    mock_extract.return_value = (_stub_report("X"), {"input_tokens": 100, "output_tokens": 50})
+    competitors = [
+        Competitor(name=n, sources=[Source(kind="pricing", url=f"https://{n.lower()}.app/p")])
+        for n in ["A", "B"]
+    ]
+    result = run_once(
+        client=MagicMock(),
+        competitors=competitors,
+        model_id="claude-sonnet-4-6",
+        store=store,
+        cost_cap_usd=5.0,
+    )
+    assert mock_extract.call_count == 2
+    assert result.aborted_competitors == []
+
+
+@patch("src.agent.extract_signals")
+@patch("src.agent.fetch_competitor")
 def test_run_once_preserves_original_null_finding_when_extraction_returned_zero(
     mock_fetch, mock_extract, store
 ):
