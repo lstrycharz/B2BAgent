@@ -1,10 +1,10 @@
 name: Daily Competitive Intel
 
+# 09:00 UTC daily, plus manual triggering from the Actions tab.
 on:
   schedule:
-    # 09:00 UTC daily. Picked so the digest lands before a US-East workday.
-    - cron: "0 9 * * *"
-  workflow_dispatch: {}  # allow manual triggering from the Actions tab
+    - cron: '0 9 * * *'
+  workflow_dispatch:
 
 permissions:
   # contents:write is required to commit data/state.db back so dedup persists
