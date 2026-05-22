@@ -45,6 +45,12 @@ jobs:
           DIGEST_FROM_EMAIL: ${{ secrets.DIGEST_FROM_EMAIL }}
         run: python -m src.main
 
+      - name: Run health alerts
+        env:
+          # Optional — if unset, alerts print to the log but aren't delivered.
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python -m monitoring.alerts
+
       - name: Persist signal-dedup state
         # data/state.db is .gitignore'd by default; force-add it so the cron
         # can commit it back as a dedup checkpoint. The file remains tracked
