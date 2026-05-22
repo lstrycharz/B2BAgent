@@ -78,6 +78,7 @@ Configure in **Settings → Secrets and variables → Actions**:
 | `RESEND_API_KEY` | no | If unset, email is skipped (digest still appears in workflow logs) |
 | `DIGEST_RECIPIENT_EMAIL` | no | Where the digest is delivered |
 | `DIGEST_FROM_EMAIL` | no | Defaults to `onboarding@resend.dev` |
+| `SLACK_WEBHOOK_URL` | no | If unset, health alerts print to the workflow log but aren't delivered to Slack |
 
 The workflow needs `contents: write` permission to commit `data/state.db` back to the repo for dedup persistence. Already configured in `.github/workflows/competitive_intel.yml`.
 

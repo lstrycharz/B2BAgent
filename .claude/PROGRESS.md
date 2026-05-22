@@ -36,13 +36,22 @@ Last updated: 2026-05-18 end-of-day.
   ```
   Not urgent — Phase 1 work continues either way.
 
+## Stage 5 — Monitoring (code Done)
+
+- `monitoring/metrics.py` — pure `summarize_runs()` (total/success-rate/cost/signals).
+- `monitoring/dashboard.py` — Streamlit app: topline metrics, cost-per-run + signals-per-run line charts, signals-per-competitor bar chart, recent-runs table. Verified via screenshot.
+- `monitoring/alerts.py` — two health checks (no-signals-in-48h, cost-spike-3-consecutive) + Slack sender. Wired into the workflow as a 'Run health alerts' step.
+- `src/state.py` gained `RunLog`/`RunRecord` (runs table) and `SignalStore.counts_by_competitor()`.
+- `src/main.py` records every run (success/partial/error) to the RunLog.
+- Run the dashboard: `streamlit run monitoring/dashboard.py`.
+- Remaining DoD items are time-based (2 weeks of baseline data accumulates as the cron runs) + a user task (manually audit 5 digests).
+
 ## Next Up (priority order)
 
-1. **Phase 1 Day 2 skim** (user, 2026-05-19 morning, ~2 min)
-2. **Stage 5: monitoring dashboard** (Claude can build in parallel — Streamlit app reading `data/state.db`, showing run success rate, cost trend, signals per competitor)
-3. **Phase 1 Day 3 skim + consolidated review** (user, 2026-05-20)
-4. **Graduate decision: Phase 2 or stay in Phase 1** (after review)
-5. **Stage 6 Iteration #2: semantic dedup** (after Phase 1 closes; uses Wayback Machine snapshots as test data)
+1. **Phase 1 Day 2/3 skims** (user, ~2 min each) — then end-of-day-3 consolidated review in `rollout/phase1_shadow/_review.md`
+2. **Graduate decision: Phase 2 or stay in Phase 1** (after review)
+3. **Stage 6 Iteration #2: semantic dedup** (after Phase 1 closes; uses Wayback Machine snapshots as test data)
+4. **Optional housekeeping:** bump `actions/checkout`/`actions/setup-python` to silence Node 20 deprecation warning
 
 ## Known Issues / Limitations
 
@@ -54,7 +63,7 @@ Last updated: 2026-05-18 end-of-day.
 When resuming:
 1. Read this file
 2. `git log --oneline -10`
-3. `.venv/bin/pytest` — confirm 42 still passing
+3. `.venv/bin/pytest` — confirm 67 still passing
 4. Check latest workflow run: `gh run list --limit 3 --workflow=competitive_intel.yml`
 5. If today is 2026-05-21 or later: open `rollout/phase1_shadow/_review.md` and decide Phase 2 graduation
-6. Otherwise: continue Stage 5 or wait for user input
+6. Otherwise: wait for user input
