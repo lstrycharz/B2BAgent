@@ -99,3 +99,15 @@ def test_store_persists_across_reopen(tmp_path):
     store_b = SignalStore(db_path)
     assert store_b.is_new(s, competitor="Linear") is False
     store_b.close()
+
+
+def test_counts_by_competitor_empty_store(store: SignalStore):
+    assert store.counts_by_competitor() == {}
+
+
+def test_counts_by_competitor_tallies_per_competitor(store: SignalStore):
+    store.mark_seen(_signal("A1"), competitor="Linear")
+    store.mark_seen(_signal("A2"), competitor="Linear")
+    store.mark_seen(_signal("B1"), competitor="Asana")
+    counts = store.counts_by_competitor()
+    assert counts == {"Linear": 2, "Asana": 1}

@@ -72,6 +72,14 @@ class SignalStore:
         )
         self._conn.commit()
 
+    def counts_by_competitor(self) -> dict[str, int]:
+        """Total seen-signal count per competitor — feeds the dashboard's
+        signals-per-competitor chart."""
+        rows = self._conn.execute(
+            "SELECT competitor, COUNT(*) FROM seen_signals GROUP BY competitor"
+        ).fetchall()
+        return {competitor: count for competitor, count in rows}
+
     def close(self) -> None:
         self._conn.close()
 

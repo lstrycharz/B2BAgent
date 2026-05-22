@@ -22,7 +22,7 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from monitoring.metrics import summarize_runs  # noqa: E402
-from src.state import RunLog  # noqa: E402
+from src.state import RunLog, SignalStore  # noqa: E402
 
 DB_PATH = REPO_ROOT / "data" / "state.db"
 
@@ -35,6 +35,16 @@ def _load_runs(limit: int = 60):
         return log.recent(limit=limit)
     finally:
         log.close()
+
+
+def _load_signal_counts() -> dict[str, int]:
+    if not DB_PATH.exists():
+        return {}
+    store = SignalStore(str(DB_PATH))
+    try:
+        return store.counts_by_competitor()
+    finally:
+        store.close()
 
 
 def main() -> None:
@@ -67,6 +77,26 @@ def main() -> None:
     )
     if latest.status == "error" and latest.error:
         st.error(f"Most recent run failed: {latest.error}")
+
+    # --- Trend charts (runs are newest-first; reverse for chronological x-axis) ---
+    chrono = list(reversed(runs))
+    trend = pd.DataFrame(
+        {
+            "cost_usd": [r.cost_usd for r in chrono],
+            "signals": [r.total_signals for r in chrono],
+        },
+        index=[r.started_at for r in chrono],
+    )
+    st.subheader("Cost per run")
+    st.line_chart(trend["cost_usd"])
+    st.subheader("Signals per run")
+    st.line_chart(trend["signals"])
+
+    # --- Signals per competitor (cumulative, from the dedup store) ---
+    counts = _load_signal_counts()
+    if counts:
+        st.subheader("Signals surfaced per competitor (all time)")
+        st.bar_chart(pd.DataFrame({"signals": counts}))
 
     # --- Recent runs table ---
     st.subheader("Recent runs")
