@@ -3,21 +3,22 @@
 Usage: python -m src.main
 
 Loads ANTHROPIC_API_KEY from .env, runs the full pipeline across all configured
-competitors, prints the digest, and prints a cost summary.
+competitors, records the run in the RunLog, prints the digest, and emails it.
 """
 
 import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-from src.agent import run_once
+from src.agent import RunResult, run_once
 from src.config import DEFAULT_COMPETITORS, usage_to_cost_usd
 from src.mailer import ResendSender
-from src.state import SignalStore
+from src.state import RunLog, RunRecord, SignalStore
 
 DEFAULT_MODEL_ID = "claude-sonnet-4-6"
 DEFAULT_FROM_EMAIL = "onboarding@resend.dev"
@@ -36,19 +37,71 @@ def main() -> int:
         return 2
 
     DEFAULT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    run_id = uuid4().hex
+    started_at = datetime.now(UTC).isoformat()
     store = SignalStore(str(DEFAULT_DB_PATH))
+    run_log = RunLog(str(DEFAULT_DB_PATH))
 
     try:
-        client = Anthropic(api_key=api_key)
-        result = run_once(
-            client=client,
-            competitors=DEFAULT_COMPETITORS,
-            model_id=DEFAULT_MODEL_ID,
-            store=store,
+        try:
+            client = Anthropic(api_key=api_key)
+            result = run_once(
+                client=client,
+                competitors=DEFAULT_COMPETITORS,
+                model_id=DEFAULT_MODEL_ID,
+                store=store,
+            )
+        except Exception as e:
+            run_log.record(_error_record(run_id, started_at, e))
+            print(f"error: agent run failed and was logged: {e}", file=sys.stderr)
+            return 1
+
+        run_log.record(_run_record(run_id, started_at, result))
+        _print_summary(result)
+        _maybe_send_digest(
+            result.digest,
+            total_new_signals=sum(len(r.signals) for r in result.reports.values()),
         )
+        return 0
     finally:
         store.close()
+        run_log.close()
 
+
+def _run_record(run_id: str, started_at: str, result: RunResult) -> RunRecord:
+    """Build a RunRecord from a successful (or cost-capped) run."""
+    total_signals = sum(len(r.signals) for r in result.reports.values())
+    return RunRecord(
+        run_id=run_id,
+        started_at=started_at,
+        status="partial" if result.aborted_competitors else "success",
+        competitors_processed=len(result.reports),
+        total_signals=total_signals,
+        input_tokens=result.total_input_tokens,
+        output_tokens=result.total_output_tokens,
+        cost_usd=usage_to_cost_usd(result.total_input_tokens, result.total_output_tokens),
+        aborted_competitors=",".join(result.aborted_competitors),
+        error=None,
+    )
+
+
+def _error_record(run_id: str, started_at: str, exc: Exception) -> RunRecord:
+    """Build a RunRecord for a run that crashed before completing."""
+    return RunRecord(
+        run_id=run_id,
+        started_at=started_at,
+        status="error",
+        competitors_processed=0,
+        total_signals=0,
+        input_tokens=0,
+        output_tokens=0,
+        cost_usd=0.0,
+        aborted_competitors="",
+        error=f"{type(exc).__name__}: {exc}",
+    )
+
+
+def _print_summary(result: RunResult) -> None:
     print(result.digest)
     print()
     print("---")
@@ -62,9 +115,6 @@ def main() -> int:
             f"⚠️  Cost cap reached; aborted: {', '.join(result.aborted_competitors)}",
             file=sys.stderr,
         )
-
-    _maybe_send_digest(result.digest, total_new_signals=sum(len(r.signals) for r in result.reports.values()))
-    return 0
 
 
 def _maybe_send_digest(digest: str, total_new_signals: int) -> None:

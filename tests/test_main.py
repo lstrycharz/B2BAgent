@@ -1,8 +1,69 @@
-"""Tests for src/main.py — specifically the env-var handling that bit us in CI."""
+"""Tests for src/main.py — env-var handling + run-record construction."""
 
 from unittest.mock import MagicMock, patch
 
 from src import main
+from src.agent import RunResult
+from src.stages import IntelligenceReport, Signal
+
+
+def _report(name: str, n_signals: int) -> IntelligenceReport:
+    return IntelligenceReport(
+        competitor=name,
+        signals=[
+            Signal(
+                signal_type="product_launch",
+                headline=f"{name} #{i}",
+                detail="-",
+                verbatim_quote="-",
+                source_url="https://x.com",
+                significance=3,
+            )
+            for i in range(n_signals)
+        ],
+    )
+
+
+# --- run-record construction --------------------------------------------------
+
+def test_run_record_marks_success_when_nothing_aborted():
+    result = RunResult(
+        digest="...",
+        reports={"Linear": _report("Linear", 3), "Asana": _report("Asana", 2)},
+        total_input_tokens=45000,
+        total_output_tokens=5800,
+        aborted_competitors=[],
+    )
+    rec = main._run_record("run-1", "2026-05-18T09:00:00+00:00", result)
+    assert rec.status == "success"
+    assert rec.competitors_processed == 2
+    assert rec.total_signals == 5
+    assert rec.cost_usd > 0
+    assert rec.aborted_competitors == ""
+    assert rec.error is None
+
+
+def test_run_record_marks_partial_when_competitors_aborted():
+    result = RunResult(
+        digest="...",
+        reports={"Linear": _report("Linear", 3)},
+        total_input_tokens=10000,
+        total_output_tokens=1000,
+        aborted_competitors=["Monday", "ClickUp"],
+    )
+    rec = main._run_record("run-2", "2026-05-18T09:00:00+00:00", result)
+    assert rec.status == "partial"
+    assert rec.aborted_competitors == "Monday,ClickUp"
+
+
+def test_error_record_captures_exception_type_and_message():
+    rec = main._error_record(
+        "run-3", "2026-05-18T09:00:00+00:00", RuntimeError("fetch blew up")
+    )
+    assert rec.status == "error"
+    assert rec.error == "RuntimeError: fetch blew up"
+    assert rec.total_signals == 0
+    assert rec.cost_usd == 0.0
 
 
 @patch("src.main.ResendSender")

@@ -14,7 +14,6 @@ from src.stages import (
     render_digest,
 )
 
-
 # --- Schema tests --------------------------------------------------------------
 
 def test_signal_requires_verbatim_quote():
